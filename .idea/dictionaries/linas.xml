@@ -3,10 +3,18 @@
     <words>
       <w>colorspace</w>
       <w>convolutional</w>
+      <w>crossentropy</w>
+      <w>dataset</w>
       <w>engineio</w>
       <w>eventlet</w>
+      <w>fname</w>
       <w>keras</w>
+      <w>lenet</w>
       <w>nano</w>
+      <w>preprocess</w>
+      <w>preprocessing</w>
+      <w>relu</w>
+      <w>tanh</w>
       <w>udacity</w>
       <w>websocket</w>
     </words>
