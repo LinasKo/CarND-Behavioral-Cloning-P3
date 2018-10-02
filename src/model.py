@@ -9,7 +9,7 @@ models_dir = os.path.join(root_dir, "models")
 
 # Data processing
 import csv
-import cv2
+from scipy import misc
 import numpy as np
 
 # Model training
@@ -43,7 +43,7 @@ def crop_top(image_array):
 def read_center_image(line, img_dir):
     # Line:  center, left, right, steering, throttle, brake, speed
     image_fname = os.path.join(img_dir, os.path.basename(line[0]))
-    img = cv2.imread(image_fname)
+    img = misc.imread(image_fname)
     label = float(line[3])
     return img, label
 
@@ -51,7 +51,7 @@ def read_center_image(line, img_dir):
 def read_left_image(line, img_dir):
     # Line:  center, left, right, steering, throttle, brake, speed
     image_fname = os.path.join(img_dir, os.path.basename(line[1]))
-    img = cv2.imread(image_fname)
+    img = misc.imread(image_fname)
     label = float(line[3]) + SIDE_IMAGE_STEERING_CORRECTION
     return img, label
 
@@ -59,7 +59,7 @@ def read_left_image(line, img_dir):
 def read_right_image(line, img_dir):
     # Line:  center, left, right, steering, throttle, brake, speed
     image_fname = os.path.join(img_dir, os.path.basename(line[2]))
-    img = cv2.imread(image_fname)
+    img = misc.imread(image_fname)
     label = float(line[3]) - SIDE_IMAGE_STEERING_CORRECTION
     return img, label
 
@@ -108,6 +108,7 @@ def model_lenet():
 
 
 if __name__ == "__main__":
+
     # # Set up the training
     # model = model_lenet()
     # x_train, y_train = extract_data()
