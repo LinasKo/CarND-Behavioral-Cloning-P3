@@ -2,9 +2,6 @@
 import os
 from src.utils import set_working_dir
 root_dir = set_working_dir()
-data_dirs = [
-    os.path.join(root_dir, "data_mouse_drive_2_laps")
-]
 models_dir = os.path.join(root_dir, "models")
 
 # Data processing
@@ -14,30 +11,20 @@ import numpy as np
 
 # Model training
 from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D, Dense, Flatten
+from keras.layers import Conv2D, MaxPooling2D, Dense, Flatten, Lambda, Cropping2D
 
 # Visualisation
 from src.utils import visualise_random_images
+from keras.utils import plot_model
+from keras.models import load_model
 
 
 # Parameters
-TOP_CROP_PERCENT = 0.35
+CROP_TOP = 50
+CROP_BOT = 20
+CROP_LEFT = 0
+CROP_RIGHT = 0
 SIDE_IMAGE_STEERING_CORRECTION = 0.2
-
-
-def normalize(image_array):
-    assert len(np.shape(image_array)) == 4
-    return (image_array.astype(np.int16) - 128) / 128
-
-
-def crop_top(image_array):
-    """
-    Crop the top of an image since we only care about the road.
-    :param image_array: image_array, a numpy array
-    :return: cropped image
-    """
-    assert len(np.shape(image_array)) == 4
-    return image_array[:, int(image_array.shape[1] * TOP_CROP_PERCENT):]
 
 
 def read_center_image(line, img_dir):
@@ -64,7 +51,7 @@ def read_right_image(line, img_dir):
     return img, label
 
 
-def extract_data():
+def extract_data(data_dirs):
     images = []
     labels = []
 
@@ -79,21 +66,20 @@ def extract_data():
                 images.append(img)
                 labels.append(label)
 
-    # Bulk preprocess
     images, labels = np.array(images), np.array(labels)
 
-    images = crop_top(images)
-    images = normalize(images)
-
-    flipped_images, flipped_labels = np.flip(images, axis=2), np.negative(labels)
-    images = np.concatenate((images, flipped_images))
-    labels = np.concatenate((labels, flipped_labels))
+    # flipped_images, flipped_labels = np.flip(images, axis=2), np.negative(labels)
+    # images = np.concatenate((images, flipped_images))
+    # labels = np.concatenate((labels, flipped_labels))
 
     return images, labels
 
 
 def model_lenet():
     model = Sequential()
+    # model.add(Cropping2D(cropping=((CROP_TOP, CROP_BOT), (CROP_LEFT, CROP_RIGHT)), input_shape=(160, 320, 3)))
+    # model.add(Lambda(lambda x: x / 255. - 0.5))
+
     model.add(Conv2D(32, (3, 3), activation="relu", input_shape=(160, 320, 3)))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(32, (3, 3), activation="relu"))
@@ -103,22 +89,45 @@ def model_lenet():
     model.add(Dense(1))
 
     model.compile(loss="mse", optimizer='adam')
+    return model
 
+
+def model_nvidia_net():
+    model = Sequential()
+    model.add(Cropping2D(cropping=((CROP_TOP, CROP_BOT), (0, 0)), input_shape=(3, 160, 320)))
+    model.add(Lambda(lambda x: x / 255. - 0.5))
+
+    model.add(Conv2D(24, (5, 5), activation="relu"))
+    model.add(Conv2D(36, (5, 5), activation="relu"))
+    model.add(Conv2D(48, (5, 5), activation="relu"))
+    model.add(Conv2D(64, (3, 3), activation="relu"))
+    model.add(Conv2D(64, (3, 3), activation="relu"))
+    model.add(Flatten())
+    model.add(Dense(1164, activation="relu"))
+    model.add(Dense(100, activation="relu"))
+    model.add(Dense(50, activation="relu"))
+    model.add(Dense(10, activation="relu"))
+    model.add(Dense(100, activation="relu"))
+    model.add(Dense(1))
+
+    model.compile(loss="mse", optimizer='adam')
     return model
 
 
 if __name__ == "__main__":
+    # Get the data
+    data_dirs = [
+        os.path.join(root_dir, "data_example"),
+        # os.path.join(root_dir, "data_mouse_drive_2_laps"),
+    ]
+    x_train, y_train = extract_data(data_dirs)
 
-    # # Set up the training
-    # model = model_lenet()
-    # x_train, y_train = extract_data()
-    #
-    # # Train the model
-    # model.fit(x_train, y_train, batch_size=256, epochs=10, validation_split=0.2, shuffle=True)
-    #
-    # # Save the model
-    # model.save(os.path.join(models_dir, "model.h5"))
+    # Train the model
+    model = model_lenet()
+    model.fit(x_train, y_train, batch_size=256, epochs=10, validation_split=0.2)
 
-    images, labels = extract_data()
-    visualise_random_images(images, labels)
+    # Save the model
+    model.save(os.path.join(models_dir, "model.h5"))
 
+    # images, labels = extract_data()
+    # visualise_random_images(images, labels)
