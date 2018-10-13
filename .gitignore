@@ -1,9 +1,20 @@
 # Project
+## Data
 data_example
 data_mouse_drive_2_laps
-models
+data_mouse_track_segments
+
+## Models
+models/*
+!models/model.h5
+
+## Other
 beta_simulator_windows
 term2_sim_linux
+final_video_images
+
+##
+*.pyc
 
 
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm

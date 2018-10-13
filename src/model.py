@@ -12,12 +12,7 @@ import numpy as np
 # Model training
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, Dense, Flatten, Lambda, Cropping2D
-
-# Visualisation
-from src.utils import visualise_random_images
-from keras.utils import plot_model
-from keras.models import load_model
-
+from keras.callbacks import EarlyStopping
 
 # Parameters
 CROP_TOP = 50
@@ -66,21 +61,29 @@ def extract_data(data_dirs):
                 images.append(img)
                 labels.append(label)
 
+                img, label = read_left_image(line, img_dir)
+                images.append(img)
+                labels.append(label)
+
+                img, label = read_right_image(line, img_dir)
+                images.append(img)
+                labels.append(label)
+
     images, labels = np.array(images), np.array(labels)
 
-    # flipped_images, flipped_labels = np.flip(images, axis=2), np.negative(labels)
-    # images = np.concatenate((images, flipped_images))
-    # labels = np.concatenate((labels, flipped_labels))
+    flipped_images, flipped_labels = np.flip(images, axis=2), np.negative(labels)
+    images = np.concatenate((images, flipped_images))
+    labels = np.concatenate((labels, flipped_labels))
 
     return images, labels
 
 
 def model_lenet():
     model = Sequential()
-    # model.add(Cropping2D(cropping=((CROP_TOP, CROP_BOT), (CROP_LEFT, CROP_RIGHT)), input_shape=(160, 320, 3)))
-    # model.add(Lambda(lambda x: x / 255. - 0.5))
+    model.add(Cropping2D(cropping=((CROP_TOP, CROP_BOT), (CROP_LEFT, CROP_RIGHT)), input_shape=(160, 320, 3)))
+    model.add(Lambda(lambda x: x / 255. - 0.5))
 
-    model.add(Conv2D(32, (3, 3), activation="relu", input_shape=(160, 320, 3)))
+    model.add(Conv2D(32, (3, 3), activation="relu"))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(32, (3, 3), activation="relu"))
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -94,7 +97,7 @@ def model_lenet():
 
 def model_nvidia_net():
     model = Sequential()
-    model.add(Cropping2D(cropping=((CROP_TOP, CROP_BOT), (0, 0)), input_shape=(3, 160, 320)))
+    model.add(Cropping2D(cropping=((CROP_TOP, CROP_BOT), (CROP_LEFT, CROP_RIGHT)), input_shape=(160, 320, 3)))
     model.add(Lambda(lambda x: x / 255. - 0.5))
 
     model.add(Conv2D(24, (5, 5), activation="relu"))
@@ -114,20 +117,46 @@ def model_nvidia_net():
     return model
 
 
+def model_custom():
+    model = Sequential()
+    model.add(Cropping2D(cropping=((CROP_TOP, CROP_BOT), (CROP_LEFT, CROP_RIGHT)), input_shape=(160, 320, 3)))
+    model.add(Lambda(lambda x: x / 255. - 0.5))
+
+    model.add(Conv2D(64, (3, 3), activation="relu"))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(64, (3, 3), activation="relu"))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Flatten())
+    model.add(Dense(200, activation="relu"))
+    model.add(Dense(1))
+
+    model.compile(loss="mse", optimizer='adam')
+    return model
+
+
 if __name__ == "__main__":
     # Get the data
     data_dirs = [
-        os.path.join(root_dir, "data_example"),
-        # os.path.join(root_dir, "data_mouse_drive_2_laps"),
+        # os.path.join(root_dir, "data_example"),
+        os.path.join(root_dir, "data_mouse_drive_2_laps"),
+        os.path.join(root_dir, "data_mouse_track_segments"),
     ]
     x_train, y_train = extract_data(data_dirs)
 
     # Train the model
     model = model_lenet()
-    model.fit(x_train, y_train, batch_size=256, epochs=10, validation_split=0.2)
+    model.fit(x_train, y_train, batch_size=256, epochs=15, validation_split=0.2, callbacks=[EarlyStopping(patience=2)])
 
     # Save the model
     model.save(os.path.join(models_dir, "model.h5"))
 
+    # TODO: dropout may not have been used after all
+    # TODO: possibly no lenet doubling as well
+
+    # # Visualisation
+    # from src.utils import visualise_random_images
+    # from keras.utils import plot_model
+    # from keras.models import load_model
+    #
     # images, labels = extract_data()
     # visualise_random_images(images, labels)
